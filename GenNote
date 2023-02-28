@@ -1,0 +1,20 @@
+
+Record of Generated Events 
+
+LArTPC v1 checkpoints = 4,000 iters (10 epochs) up to 60,000 (150 epochs)
+
+LArTPC v2 checkpoints = 20,000 iters (50 epochs) up to 120,000 (300 epochs)
+
+20 Epochs = 8k iters = ckpt2 v1 (Done 1/28/23)
+25 Epochs = 10k iters = ckpt2.5 v0 (Done - Outdated)
+30 Epochs = 12k iters = ckpt3 v1 (Done 12/15/22)
+40 Epochs = 16k iters = ckpt4 v1 (Done 1/6/23)
+50 Epochs = 20k iters = ckpt5 v1 (Done - Outdated)
+100 Epochs = 40k iters = ckpt10 v1 (Done 1/15/23) -- Outdated = epoch101 
+150 Epochs = 60k iters = ckpt15 v1 (Done 12/20/23)
+300 Epochs = 120k iters = ckpt6 v2 (Done 2/28/23)
+
+
+TO DO
+Epochs: 50 (v1), 100 (v1), 100 (v2), 200, 250
+

@@ -16,12 +16,12 @@ def ASCII(track):
 			print(str(int(num)).zfill(2), end='') 
 		print()
 
-#fileName = "gen_epoch101_tracks" 
-fileName = "Paul_Results_tracks" 
+fileName = "gen_epoch100a_v2_tracks" 
+#fileName = "Paul_Results_tracks" 
 
 #fileName = "larcv_png_64_test_showers"
 
-tracks = np.load("/home/zimani/energy_analysis/npy_files/"+fileName+".npy")
+tracks = np.load("/home/zimani/GenNets/energy_analysis/npy_files/"+fileName+".npy")
 
 ## How many tracks to iterate 
 exitCount = -1
@@ -29,6 +29,8 @@ exitCount = -1
 SecondPCA = True
 
 SampleImages = False 
+
+saveAngle = False 
 
 SaveNPY = True
 
@@ -120,7 +122,9 @@ for counter, track in enumerate(tracks):
 		print("Saved Sample Length "+str(length))
 
 	lengths.append(length) 
-	angles.append(angle) 
+
+	if saveAngle: 
+		angles.append(angle) 
 
 	if SecondPCA: 
 		lengths2.append(length2)
@@ -128,12 +132,17 @@ for counter, track in enumerate(tracks):
 if SaveNPY: 
 	
 	np.save("hists/"+fileName+"_lengths.npy", lengths) 
-	np.save("hists/"+fileName+"_angles.npy", angles) 
+	
+	outputs = "Lengths"
+
+	if saveAngle: 
+		np.save("hists/"+fileName+"_angles.npy", angles) 
+		outputs += ", Angles," 
 	
 	if SecondPCA: 
 		np.save("hists/"+fileName+"_lengths_PCA2.npy", lengths2) 
-		print("Saved: "+fileName+" Length, Angle, and Width") 
-	else: 
-		print("Saved: "+fileName+" Length and Angle") 
+		outputs += " and Widths" 
+
+	print("Saved:", fileName, outputs) 
 		
 

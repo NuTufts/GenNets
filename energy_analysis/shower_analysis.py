@@ -15,11 +15,11 @@ def ASCII(shower):
 #fileName = "larcv_png_64_train_showers"
 #fileName = "larcv_png_64_test_tracks"
 
-#fileName = "gen_epoch101_showers" 
+fileName = "gen_epoch100a_v2_showers" 
 
 #fileName = "Paul_Results_tracks"
 
-showers = np.load("/home/zimani/energy_analysis/npy_files/"+fileName+".npy")
+showers = np.load("/home/zimani/GenNets/energy_analysis/npy_files/"+fileName+".npy")
 
 ## How many showers to iterate 
 exitCount = -1
@@ -27,7 +27,7 @@ exitCount = -1
 ## Output Options 
 saveSamples = False 
 saveNPY = True
-saveWave = True 
+saveWave = False 
 saveName = "thresh25_norm"
 #saveName = "energy"
 
@@ -230,5 +230,8 @@ for counter, shower in enumerate(showers):
 ## Histogram of Lengths 
 if saveNPY: 
 	np.save("hists/"+fileName+"_charges.npy", charges) 
-	np.save("hists/"+fileName+"_wavelets_"+saveName+".npy", wavelets) 
+	print("Saved: "+fileName+" Charges") 
+	if saveWave: 
+		np.save("hists/"+fileName+"_wavelets_"+saveName+".npy", wavelets) 
+		print(" and wavelets") 
 

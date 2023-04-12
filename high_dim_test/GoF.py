@@ -19,40 +19,44 @@ from high_dim_tests import TwoSampleWTest
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-inDir = "/home/zimani/GenNets/energy_analysis/npy_files/"
+inDir = "/home/zimani/GenNets/npy_files/"
 
-n = 100
+n = 100 #Sink 
+#n = 10000 #MMD 
 
 # tracks, showers, or mixed 
 events = "mixed" 
 
 # train or test
-compare = "test"
+compare = "train"
 
 # Goodness of Fit test
 # MMD, Sink, W1, 
-GoF_test = "W2" 
+GoF_test = "Sink" 
+
+sinkEps = 0.1 
 
 outDir = "./npy_files/"
-outFile = GoF_test+"_"+events+"_"+compare+".npy"
+if GoF_test == 'Sink': 
+	outFile = GoF_test+"_"+events+"_"+compare+"_"+str(sinkEps)+".npy"
+else: 
+	outFile = GoF_test+"_"+events+"_"+compare+".npy"
 
 larT = np.load(inDir+"larcv_png_64_"+compare+"_tracks.npy")
 larS = np.load(inDir+"larcv_png_64_"+compare+"_showers.npy")
 
+
 # Get selection of LArTPC events 
 if events == 'tracks': 
-	if n > larT.shape[0]: 
-		n = larT.shape[0]
-	lar = larT[0:n,:,:] 
+	lars = larT
 if events == 'showers': 
-	if n > larS.shape[0]: 
-		n = larS.shape[0]
-	lar = larS[0:n,:,:] 
+	lars = larS
 if events == 'mixed': 
-	larRatioT = larT.shape[0] / (larT.shape[0] + larS.shape[0]) 
-	larN = int(n*larRatioT)
-	lar = np.concatenate((larT[0:larN,:,:], larS[0:n-larN,:,:]))
-	n = lar.shape[0]
+	lars = np.concatenate((larT, larS)) 
+if n > lars.shape[0]: 
+	n = lars.shape[0]
+idxL = np.random.choice(np.arange(lars.shape[0]), size=n, replace=False) 
+lar = lars[idxL]
 lar = lar.flatten().reshape(n, 64*64)
 
 print(n, "samples for", outFile) 
@@ -64,8 +68,11 @@ for i in range(0,6):
 	sigma_list.append(2**(i+10)) 
 #print(sigma_list)
 
+#np.random.sample(lars, n) 
+#np.random.sample(gens, n) 
+
 # Iterate all generated epochs
-epochs = [1, 10, 20, 30, 40, 50, 100, 150, 300] 
+epochs = [1, 5, 10, 20, 30, 40, 50, 60, 100, 150, 300] 
 GoF = [] 
 for i, epoch in enumerate(epochs): 
 	
@@ -75,35 +82,38 @@ for i, epoch in enumerate(epochs):
 
 	# Get selection of generated events  
 	if events == 'tracks': 
-		gen = genT[0:n,:,:]
+		gens = genT 
 	if events == 'showers': 
-		gen = genS[0:n,:,:]
+		gens = genS
 	if events == 'mixed': 
-		genRatioT = genT.shape[0] / (genT.shape[0] + genS.shape[0]) 
-		genN = int(n*genRatioT)
-		gen = np.concatenate((genT[0:genN,:,:], genS[0:n-genN,:,:]))
+		gens = np.concatenate((genT, genS)) 
+	if n > gens.shape[0]: 
+		print("Error: n > gens.shape[0]") 
+		exit()  
+	idxG = np.random.choice(np.arange(gens.shape[0]), size=n, replace=False) 
+	gen = gens[idxG] 
 
 	# Reshape generated data to 2D array 
 	gen = gen.flatten().reshape(n, 64*64) 
 	
 	if GoF_test == "MMD":  
 		outMMD = MaximumMeanDis_mix(lar, gen, sigma_list)
-		score = outMMD.item() 
+		score = outMMD.item() * np.sqrt(n)
 
 	if GoF_test == "Sink":
-		outSinkdiv = two_sample_sinkdiv(lar, gen, eps=1)
+		outSinkdiv = two_sample_sinkdiv(lar, gen, eps=sinkEps)
 		score = outSinkdiv.item() 
 
 	if GoF_test == "W1": 
 		score = Wasserstein_1(lar, gen)
 
-	if GoF_test == "RE": 
+	if GoF_test == "RE": # Not work for single image
 		score = RankEnergy(lar, gen) 
 
-	if GoF_test == "SRE":
+	if GoF_test == "SRE": # Not work for single image 
 		score = SoftRankEnergy(lar, gen) 
 
-	if GoF_test == "W2":
+	if GoF_test == "W2": # Slow for 100 images 
 		score = TwoSampleWTest(lar, gen)[0]
 
 	GoF.append(np.array([score, epoch, gen.shape[0]])) 	

@@ -1,108 +1,130 @@
 import numpy as np
 from PIL import Image
-import os
+from absl import flags 
+from absl import app
+import os 
 
+set_epoch = 50
+set_outFile = "gen_epoch50.npy"  
+set_inFile = "/home/zimani/VQVAE_orig.npy"
 
-## Parameters 
-genSamples = False 
+FLAGS = flags.FLAGS 
+flags.DEFINE_bool('genSamples', True, 'Process epoch from Score Network') 
+flags.DEFINE_integer('epoch', set_epoch, 'Training epoch to process') 
+flags.DEFINE_string('genPath', "/home/zimani/score_sde_pytorch/larcv_png64_workdir", 'Score Network working directory') 
+flags.DEFINE_string('outFile', set_outFile, 'Name of output numpy file')  
+flags.DEFINE_integer('numSamples', 50000, 'Number of generated images to process') 
+flags.DEFINE_string('inFile', set_inFile, 'File to process from external source, only if genSamples set to False') 
 
-ckpt = 6
+def main(argv): 
 
-outfile = "gen_epoch50.npy"  
-## End Parameters 
+	# Dictionary: Epoch -> [workDir, ckpt]
+	epochDict = {
+		10 : ["_v1", 1],
+		20 : ["_v1", 2],
+		30 : ["_v1", 3],
+		40 : ["_v1", 4],
+		50 : ["_v1", 5],
+		60 : ["_v1", 6],
+		100 : ["_v1", 10],
+		150 : ["_v1", 15],
+		300 : ["_v2", 6]
+	} 
 
+	workDir = epochDict[FLAGS.epoch][0]
+	ckpt = epochDict[FLAGS.epoch][1]
 
-# Get samples from generated checkpoint (formerly merge_samples.py)  
-if genSamples: 
+	# Get samples from generated checkpoint  
+	if FLAGS.genSamples: 
 
-	genDir = "/home/zimani/score_sde_pytorch/larcv_png64_workdir/eval/ckpt_"+str(ckpt)+"/"
+		genDir = FLAGS.genPath+workDir+"/eval/ckpt_"+str(ckpt)+"/" 
+		inFile = "" 
 
-	newData = []
-	
-	# Merge all batches into single array 
-	for i in range(1,1000):
-		filename = genDir+"samples_"+str(i)+".npz" 
-		if os.path.exists(filename): 
-			sample = np.load(filename) 
-			newData.append(sample['samples'])
-		else: 
-			break
-
-	samples = np.asarray(newData) 
-
-# Load existing numpy file 
-else:	
-
-	inDir = "/home/zimani/"
-
-	#inFile = "ckpt_3_samples.npy"
-	#inFile = "larcv_png_64_train_grayscale.npy"
-	inFile = "gen_epoch300_orig.npy"
-	
-	# Remove last underscore from name 
-	outFile = "_".join(inFile.split("_")[:-1])+".npy"
-
-	samples = np.load(inDir+inFile)
-
-
-# Optional: trim number of samples to 32 
-#trimmed = samples[0:32,:,:] 
-
-# Mask out noise 
-samples[np.where(samples <= 4)] = 0
-
-# Number of images desired
-maxSamples = 50000
-totSamples = 0 
-
-# Batch size 
-bSize = samples.shape[1]  
-batches = int(maxSamples/bSize) + 1 #rounding 
-
-# Convert to grayscale npy files
-saveGray = True
-grayImages = []
-
-# Option: save a sample png 
-saveSamples = False
-sampleDir = ""
-
-# Iterate batches 
-for j in range(0, batches): 
-
-	# Iterate image in batch 
-	for i in range(0, bSize):
-
-		try: 
-			image = samples[j][i]
-			totSamples += 1
-		except: 
-			break
-
-		# Open image using PIL
-		im = Image.fromarray(image)
-
-		# Convert to grayscale (lossy??)
-		im = im.convert('L')
-
-		# Sample Image 
-		if saveSamples and i==10 and j==10:
-			im.save(sampleDir+"image_"+str(i)+".png")
-
-		# Insert single channel (64, 64) -> (64, 64, 1)
-		im = np.expand_dims(im, axis=-1)
-
-		# Create new array of grayscale images
-		grayImages.append(im)
+		newData = []
 		
-		# Limit number of samples 
-		if totSamples == maxSamples: 
-			pass 
-			#break 
+		# Merge all batches into single array 
+		for i in range(1,1000):
+			filename = genDir+"samples_"+str(i)+".npz" 
+			if os.path.exists(filename): 
+				sample = np.load(filename) 
+				newData.append(sample['samples'])
+			else: 
+				break
 
-# Save grayscaled npy 
-if saveGray: 
-	np.save(outFile, grayImages) 
+		samples = np.asarray(newData) 
 
-print(totSamples, "Images Processed")     
+		# Confirm naming convention (optional) 
+		if str(FLAGS.epoch) not in FLAGS.outFile: 
+			print("Error: epoch not in outFile name") 
+			exit() 
+	
+	# Load existing numpy file 
+	else:	
 
+		samples = np.load(FLAGS.inFile)
+		
+		# Old method: remove trailing _word from name 
+		#inFile = "VQVAE_orig.npy"
+		#outFile = "_".join(inFile.split("_")[:-1])+".npy"
+		#samples = np.load("/home/zimani/"+inFile)
+
+	# Mask out noise 
+	if not "VQVAE" in inFile: 
+		samples[np.where(samples <= 4)] = 0
+
+	# Number of images desired
+	maxSamples = FLAGS.numSamples
+	totSamples = 0 
+
+	# Batch size 
+	bSize = samples.shape[1]  
+	batches = int(maxSamples/bSize) + 1 #rounding 
+
+	# Processed image array 
+	procImages = []
+
+	# Iterate batches 
+	for j in range(0, batches): 
+
+		# Iterate image in batch 
+		for i in range(0, bSize):
+			try: 
+				image = samples[j][i]
+				totSamples += 1
+			except: 
+				break
+			
+			# Remove single channel for processing 
+			if image.shape == (64, 64, 1):
+				image = np.squeeze(image)
+
+			# Normalize and mask VQVAE
+			if "VQVAE" in inFile: 
+				if np.max(image) != 0: 
+					image = image / np.max(image) 
+				image *= 255 
+				image[np.where(image <= 4)] = 0 
+
+			# Open image using PIL
+			im = Image.fromarray(image)
+
+			# Convert to grayscale
+			im = im.convert('L')
+
+			# Insert single channel (64, 64) -> (64, 64, 1)
+			im = np.expand_dims(im, axis=-1)
+
+			# Add to array of processed images
+			procImages.append(im)
+			
+			# Limit number of samples 
+			if totSamples == maxSamples: 
+				break 
+
+	# Save processed events as npy 
+	np.save(FLAGS.outFile, procImages) 
+
+	print(totSamples, "images saved to", FLAGS.outFile)     
+
+if __name__ == '__main__': 
+	app.run(main) 

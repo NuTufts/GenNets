@@ -67,7 +67,7 @@ def RankEnergy(x, y):
 	otPlan = ot.emd(a, b, M) # computing Optimal Transport plan 
 	R = np.argmax(otPlan, axis = 1) # finding RANK indices corresponds to maximum values for each row
 	Rx, Ry = torch.from_numpy(h[R[:n]]), torch.from_numpy(h[R[n:]]) # Rx: rank map corresponds to X_i's 
-	RE = testStatistics(Rx, Ry) # computing energy distance between the corresponding ranks of X and Y 
+	RE = testStatistics (Rx, Ry) # computing energy distance between the corresponding ranks of X and Y 
 	return RE.cpu().detach().numpy() 
 
 """SOFT RANK ENERGY"""

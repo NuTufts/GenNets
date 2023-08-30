@@ -2,6 +2,7 @@ from scipy.stats import multivariate_normal as mvn
 from sklearn.metrics.pairwise import euclidean_distances
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+from tqdm import tqdm 
 import numpy as np
 import torch
 import ghalton
@@ -21,8 +22,11 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 inDir = "/home/zimani/GenNets/npy_files/"
 
-n = 100 #Sink 
-#n = 10000 #MMD 
+#n = 1200 #Sink 
+#n = 100000 #MMD 
+
+# Batch size 
+#bSize = 
 
 # tracks, showers, or mixed 
 events = "mixed" 
@@ -32,9 +36,25 @@ compare = "train"
 
 # Goodness of Fit test
 # MMD, Sink, W1, 
-GoF_test = "Sink" 
+GoF_test = "W1" 
 
-sinkEps = 0.1 
+# 1 is default 
+sinkEps = 1  
+
+
+## 
+if compare == 'test': 
+	n = 10000
+else: 
+	n = 50000 
+
+if GoF_test == "MMD": 
+	bSize = 10000
+if GoF_test == "Sink": 
+	bSize = 1000 
+if GoF_test == "W1": 
+	bSize = 10000
+
 
 outDir = "./npy_files/"
 if GoF_test == 'Sink': 
@@ -44,7 +64,6 @@ else:
 
 larT = np.load(inDir+"larcv_png_64_"+compare+"_tracks.npy")
 larS = np.load(inDir+"larcv_png_64_"+compare+"_showers.npy")
-
 
 # Get selection of LArTPC events 
 if events == 'tracks': 
@@ -62,17 +81,13 @@ lar = lar.flatten().reshape(n, 64*64)
 print(n, "samples for", outFile) 
 
 # Tunable hyperparameter for MMD 
-#sigma_list= [1, 2, 4, 8, 16, 32]
 sigma_list = []
 for i in range(0,6): 
 	sigma_list.append(2**(i+10)) 
 #print(sigma_list)
 
-#np.random.sample(lars, n) 
-#np.random.sample(gens, n) 
-
 # Iterate all generated epochs
-epochs = [1, 5, 10, 20, 30, 40, 50, 60, 100, 150, 300] 
+epochs = [10, 20, 30, 40, 50, 60, 100, 150, 300] 
 GoF = [] 
 for i, epoch in enumerate(epochs): 
 	
@@ -95,26 +110,48 @@ for i, epoch in enumerate(epochs):
 
 	# Reshape generated data to 2D array 
 	gen = gen.flatten().reshape(n, 64*64) 
+
+	## Batching 
+	score = 0 
+	#for b in tqdm(range(n//bSize)): 
+	for b in range(n//bSize): 
+		larBatch = lar[b*bSize:(b+1)*bSize]
+		genBatch = gen[b*bSize:(b+1)*bSize] 
 	
-	if GoF_test == "MMD":  
-		outMMD = MaximumMeanDis_mix(lar, gen, sigma_list)
-		score = outMMD.item() * np.sqrt(n)
+		if GoF_test == "Sink": 
+			outSinkdiv = two_sample_sinkdiv(larBatch, genBatch, eps=sinkEps) 
+			score += outSinkdiv.item() 
+		if GoF_test == "MMD": 
+			outMMD = MaximumMeanDis_mix(larBatch, genBatch, sigma_list)
+			score += outMMD.item() #* np.sqrt(larBatch.shape[0])
+		if GoF_test == "W1": 
+			score += Wasserstein_1(larBatch, genBatch)
 
-	if GoF_test == "Sink":
-		outSinkdiv = two_sample_sinkdiv(lar, gen, eps=sinkEps)
-		score = outSinkdiv.item() 
+	# Normalize by nuber of batches 
+	score = score / (n//bSize) 
 
-	if GoF_test == "W1": 
-		score = Wasserstein_1(lar, gen)
+		
+		
+	if 0: 	
+		if GoF_test == "MMD":  
+			outMMD = MaximumMeanDis_mix(lar, gen, sigma_list)
+			score = outMMD.item() * np.sqrt(n)
 
-	if GoF_test == "RE": # Not work for single image
-		score = RankEnergy(lar, gen) 
+		if GoF_test == "Sink":
+			outSinkdiv = two_sample_sinkdiv(lar, gen, eps=sinkEps)
+			score = outSinkdiv.item() 
 
-	if GoF_test == "SRE": # Not work for single image 
-		score = SoftRankEnergy(lar, gen) 
+		if GoF_test == "W1": 
+			score = Wasserstein_1(lar, gen)
 
-	if GoF_test == "W2": # Slow for 100 images 
-		score = TwoSampleWTest(lar, gen)[0]
+		if GoF_test == "RE": # Not work for single image
+			score = RankEnergy(lar, gen) 
+
+		if GoF_test == "SRE": # Not work for single image 
+			score = SoftRankEnergy(lar, gen) 
+
+		if GoF_test == "W2": # Slow for 100 images 
+			score = TwoSampleWTest(lar, gen)[0]
 
 	GoF.append(np.array([score, epoch, gen.shape[0]])) 	
 

@@ -37,18 +37,8 @@ Update the dataset.py in to accept the
 ## Analyses 
 
 ### Install SSNet 
-Optional
 
-Process the desired images using npy_manager.py
-
-Process the 
-
-Run the resulting event though SSNet using run_ssnet.py
-
-Use the result track files with track_analysis.py 
-
-Use the 
-
+TODO
 
 
 

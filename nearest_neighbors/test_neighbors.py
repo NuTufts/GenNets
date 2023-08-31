@@ -1,7 +1,14 @@
 import matplotlib.pyplot as plt
-from scipy.ndimage.filters import gaussian_filter
 import numpy as np
+import itertools 
 import ot
+from scipy.spatial import distance_matrix
+import cv2 
+import ot
+from pyemd import emd 
+from scipy.stats import wasserstein_distance
+
+
 
 # From Shaoib
 from high_dim_tests import MaximumMeanDis_mix as MMD
@@ -54,7 +61,7 @@ if 0:
 	plt.savefig("showerEdit.png")
 
 # Good - Euclidian Norm
-if 1: 
+if 0: 
 	print("l2") 
 	l2Rows = int(np.linalg.norm(gen - eRows))
 	l2Cols = int(np.linalg.norm(gen - eCols))
@@ -88,21 +95,71 @@ if 0:
 if 1:
 	print("EMD") 
 
-	#gen = gen.flatten() 
-	#eRows = eRows.flatten()
-	#eCols = eCols.flatten() 
-	#eBoth = eBoth.flatten() 
-	
-	gen = gen / np.max(gen) 
-	eRows = eRows / np.max(eRows)
-	eCols = eCols / np.max(eCols) 
-	eBoth = eBoth / np.max(eBoth) 
-	
+	# Get pairwise elements for 64x64 image
+	#p = np.array(list(itertools.product(np.arange(64), repeat=2))) 
+
+	# L2 distance matrix for all 
+	#M = np.array(distance_matrix(p, p, p=2))
+
+	xx, yy = np.meshgrid(np.arange(64), np.arange(64)) 
+	xx = xx.ravel() 
+	yy = yy.ravel() 
+
+	# Image Histograms 
+	genHist, _ = np.histogram(gen, bins=256, range=(0,255)) 
+	genHist = genHist / np.sum(genHist) 
+	eRowsHist, _ = np.histogram(eRows, bins=256, range=(0,255)) 
+	eRowsHist = eRowsHist / np.sum(eRowsHist) 
+	eColsHist, _ = np.histogram(eCols, bins=256, range=(0,255)) 
+	eColsHist = eColsHist / np.sum(eColsHist) 
+	eBothHist, _ = np.histogram(eBoth, bins=256, range=(0,255)) 
+	eBothHist = eBothHist / np.sum(eBothHist) 
+
 	# Not Working 
-	M = ot.dist(gen, eBoth) 
-	emdBoth = ot.emd2(gen, eBoth, M) 
-	
-	print("Both:", emdBoth) 
+	#M = ot.dist(gen, eBoth) 
+	#emdBoth = ot.emd2(gen, eBoth, M) 
+
+	## Image Signature 
+	genSig = np.vstack((gen.ravel()/np.sum(gen), xx, yy)).T.astype(np.float32)
+	eRowsSig = np.vstack((eRows.ravel()/np.sum(eRows), xx, yy)).T.astype(np.float32)
+	eColsSig = np.vstack((eCols.ravel()/np.sum(eCols), xx, yy)).T.astype(np.float32)
+	eBothSig = np.vstack((eBoth.ravel()/np.sum(eBoth), xx, yy)).T.astype(np.float32)
+
+	## L2 Distance matrix 
+	p = np.array(list(itertools.product(np.arange(64), repeat=2))) 
+	M = np.array(distance_matrix(p, p, p=2))
+
+	## PyEMD 
+	if 0: 
+		emdSelf = emd(genHist, genHist, M) 
+		emdRows = emd(eRowsHist, genHist, M) 
+		emdCols = emd(eColsHist, genHist, M) 
+		emdBoth = emd(eBothHist, genHist, M) 
+
+	## Scipy.States EMD 
+	if 0: 
+		emdSelf = wasserstein_distance(genHist, genHist) 
+		emdRows = wasserstein_distance(eRowsHist, genHist) 
+		emdCols = wasserstein_distance(eColsHist, genHist) 
+		emdBoth = wasserstein_distance(eBothHist, genHist) 
+
+	## POT EMD 
+	if 1: 
+		emdSelf = ot.emd2(gen.ravel()/np.sum(gen), gen.ravel()/np.sum(gen), M) 
+		emdRows = ot.emd2(gen.ravel()/np.sum(gen), eRows.ravel()/np.sum(eRows), M) 
+		emdCols = ot.emd2(gen.ravel()/np.sum(gen), eCols.ravel()/np.sum(eCols), M) 
+		emdBoth = ot.emd2(gen.ravel()/np.sum(gen), eBoth.ravel()/np.sum(eBoth), M) 
+
+	if 0: 
+		emdSelf, _, flow = cv2.EMD(genSig, genSig, cv2.DIST_L2) 
+		emdRows, _, flow = cv2.EMD(eRowsSig, genSig, cv2.DIST_L2) 
+		emdCols, _, flow = cv2.EMD(eColsSig, genSig, cv2.DIST_L2) 
+		emdBoth, _, flow = cv2.EMD(eBothSig, genSig, cv2.DIST_L2) 
+		
+	print("Self:", emdSelf) 
+	print("Rows:", emdRows) 
+	print("Cols:", emdCols) 
+	print("Both:", emdBoth)
 
 # Save edited (flipped) image 
 if 0: 

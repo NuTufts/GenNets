@@ -1,1 +1,0 @@
-/home/zimani/LArTPC-VQVAE/analysis/ssnet/py/make_ssnet_hists.py

@@ -2,6 +2,10 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import numpy as np
 
+##############
+# Deprecated #
+##############
+
 histPath = "/home/zimani/energy_analysis/hists/"
 
 base = np.load(histPath+"larcv_png_64_train_tracks_angles.npy") 

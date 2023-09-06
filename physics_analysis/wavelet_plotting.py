@@ -2,6 +2,10 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import numpy as np
 
+##############
+# Deprecated #
+##############
+
 histPath = "/home/zimani/energy_analysis/hists/"
 
 #wavelet = "db1" 

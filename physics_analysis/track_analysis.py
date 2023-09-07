@@ -103,39 +103,6 @@ def main(argv):
 			data_x = np.matmul(inverse_rotation_matrix, data) 	
 			length = np.rint(np.max(data_x[0]) - np.min(data_x[0])) 	
 
-		# Testing Width  
-		if width == -1: 
-			print("Counter",counter) 
-			print("Width", width) 
-			print("Length", length) 
-			fig, axs = plt.subplots(1, 2)
-			fig.suptitle("Track Width = "+str(width)) 
-			ztrack = np.clip(track*1000, 0, 255) 
-			axs[0].imshow(track, cmap='gray', interpolation='none')
-			axs[0].set_title('Full Track ('+str(np.count_nonzero(track))+')')
-			axs[1].scatter(data[0], data[1]) 
-			axs[1].set_xlim(-32,32) 
-			axs[1].set_ylim(-32,32)
-			axs[1].set_aspect('equal')
-			axs[1].set_title('Largest Cluster ('+str(len(data[0]))+')')
-			plt.tight_layout()
-			plt.show()	
-			exit() 
-
-		# Testing Width 
-		if width == -1: 
-			#plt.imshow(track, cmap='gray', interpolation='none') 
-			plt.imshow(np.clip(track*10000, 0, 255) , cmap='gray', interpolation='none') 
-			plt.scatter(data[0]+32, -data[1]+32, marker=',', alpha=1, color='blue') 
-			#plt.title("Track Width = "+str(int(width))) 
-			plt.xticks([]) 
-			plt.yticks([]) 
-			plt.tight_layout()
-			#plt.savefig("./widths/width"+str(int(width))+".png") 
-			plt.show()
-			print("Saved width", str(int(width))) 
-			exit()
-
 		## Testing PCA Calculation 
 		if counter == -1:
 			i, j = np.unravel_index(dist_mat.argmax(), dist_mat.shape)

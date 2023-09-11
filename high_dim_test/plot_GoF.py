@@ -1,14 +1,9 @@
 import matplotlib.pyplot as plt
-import numpy as np
 import matplotlib.ticker as mticker
+import numpy as np
 
 MMD_mixed_train = np.load("./npy_files/MMD_mixed_train.npy") 
-#MMD_tracks_train = np.load("./npy_files/MMD_tracks_train.npy") 
-#MMD_showers_train = np.load("./npy_files/MMD_showers_train.npy") 
-
 MMD_mixed_test = np.load("./npy_files/MMD_mixed_test.npy") 
-#MMD_tracks_test = np.load("./npy_files/MMD_tracks_test.npy") 
-#MMD_showers_test = np.load("./npy_files/MMD_showers_test.npy") 
 
 Sink_mixed_train = np.load("./npy_files/Sink_mixed_train_1.npy") 
 Sink_mixed_test = np.load("./npy_files/Sink_mixed_test_1.npy") 
@@ -16,17 +11,15 @@ Sink_mixed_test = np.load("./npy_files/Sink_mixed_test_1.npy")
 W1_mixed_train = np.load("./npy_files/W1_mixed_train.npy") 
 W1_mixed_test = np.load("./npy_files/W1_mixed_test.npy") 
 
-## GoF.append(np.array([score, epoch, gen.shape[0]])) 	
-
+## Data format: [score, epoch, gen.shape[0]]
 ## Sigma list = 2^10 : 2^15
 
-# Skip first few epochs 
+# Skip first epoch (10)
 strt = 1
 
 epochs = MMD_mixed_train[strt:,1]
 
 # Plotting 
-#plt.figure(figsize=(10,6)) 
 plt.rcParams.update({'font.size': 18}) 
 fig, ax1 = plt.subplots(1, 1, figsize=(10,6)) 
 ax2 = ax1.twinx()
@@ -43,18 +36,12 @@ l6, = ax2.plot(epochs, W1_mixed_test[strt-1:,0], ':go', label="Wasserstein-1 Val
 fig.suptitle("High Dimensional Goodness of Fit Tests", y=0.92) 
 ax1.set_xlabel("Epochs") 
 ax1.set_ylabel("MMD") 
-#ax1.set_ylabel("Sinkhorn Divergence Metric") 
 ax2.set_ylabel("Wasserstein-1 and SinkDiv") 
 ax1.set_yscale("log")
 ax2.set_yscale("log")
-
 ax2.yaxis.set_minor_formatter(mticker.ScalarFormatter())
 
-
-#plt.xticks(epochs)
-#plt.xticks([0,10,20,30,40,50,60,100,150,200,250,300]) 
 plt.xticks([10,30,50,100,150,200,250,300]) 
-
 
 print("MMD[2:] Range:", min(MMD_mixed_train[2:,0]), max(MMD_mixed_test[2:,0]))
 print("Epochs:", epochs) 

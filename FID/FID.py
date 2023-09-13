@@ -1,87 +1,90 @@
-import numpy as np
 from scipy import linalg
+from absl import flags 
+from absl import app
+import numpy as np
 
-#import torch
-#device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+set_inDir = "./ssnet_activations/"
+set_trainFile = "larcv_png_64_train_FID.npy"
+set_valFile = "larcv_png_64_test_FID.npy"
 
-larcvT = np.load("./ssnet_activations/larcv_png_64_train_FID.npy") 
-larcvT = larcvT.reshape(larcvT.shape[0], -1) 
-larcvV = np.load("./ssnet_activations/larcv_png_64_test_FID.npy") 
-larcvV = larcvV.reshape(larcvV.shape[0], -1) 
+FLAGS = flags.FLAGS 
+flags.DEFINE_string('inDir', set_inDir, "Directory containing SSNet activations in numpy format")
+flags.DEFINE_string('trainFile', set_trainFile, "Numpy file containing training dataset activations")
+flags.DEFINE_string('valFile', set_valFile, "Numpy file containing validation dataset activations") 
 
-# Downsample training larcv dataset to larcv dataset size   
-if larcvT.shape[0] > larcvV.shape[0]: 
-	idxLar = np.random.choice(np.arange(larcvT.shape[0]), size=larcvV.shape[0], replace=False) 
-	larcvT = larcvT[idxLar] 
+def main(argv): 
 
-sigmaT = np.cov(larcvT, rowvar=False) 
-muT = larcvT.mean(axis=0) 
-sigmaV = np.cov(larcvV, rowvar=False) 
-muV = larcvV.mean(axis=0) 
+	# Names of activations to compare 
+	# 	Note: _FID.npy is appended when loading 
+	fileNames = ["gen_epoch10", 
+		"gen_epoch20", 
+		"gen_epoch30", 
+		"gen_epoch40", 
+		"gen_epoch50", 
+		"gen_epoch60", 
+		"gen_epoch100", 
+		"gen_epoch150", 
+		"gen_epoch300", 
+		"VQVAE"] 
 
-fileNames = ["gen_epoch10", "gen_epoch20", "gen_epoch30", 
-	"gen_epoch40", "gen_epoch50", "gen_epoch60", 
-	"gen_epoch100", "gen_epoch150", "gen_epoch300", "VQVAE"] 
+	larcvT = np.load(FLAGS.inDir+FLAGS.trainFile) 
+	larcvT = larcvT.reshape(larcvT.shape[0], -1) 
+	larcvV = np.load(FLAGS.inDir+FLAGS.valFile) 
+	larcvV = larcvV.reshape(larcvV.shape[0], -1) 
 
-FIDs = [] 
+	# Downsample training larcv dataset to larcv dataset size   
+	if larcvT.shape[0] > larcvV.shape[0]: 
+		idxLar = np.random.choice(np.arange(larcvT.shape[0]), size=larcvV.shape[0], replace=False) 
+		larcvT = larcvT[idxLar] 
 
-print("FileName, Training FID, Validation FID") 
+	# Calculate mean and covaraince matrix for train and val
+	sigmaT = np.cov(larcvT, rowvar=False) 
+	muT = larcvT.mean(axis=0) 
+	sigmaV = np.cov(larcvV, rowvar=False) 
+	muV = larcvV.mean(axis=0) 
 
-for i, fileName in enumerate(fileNames):
+	FIDs = [] 
 
-	gen = np.load("./ssnet_activations/"+fileName+"_FID.npy") 
-	gen = gen.reshape(gen.shape[0], -1) 
-	
-	# Downsample generated images to larcv comparison size 
-	if larcvV.shape[0] != gen.shape[0]: 
-		idx = np.random.choice(np.arange(gen.shape[0]), size=larcvV.shape[0], replace=False)  
-		gen = gen[idx] 
+	print("FileName, Training FID, Validation FID") 
 
-	sigma = np.cov(gen, rowvar=False) 
-	mu = gen.mean(axis=0) 
-	
-	# Training FID 
-	# calculate sum squared difference between means
-	ssdiffT = np.sum((muT - mu)**2.0)
-	# calculate sqrt of product between cov
-	covmeanT = linalg.sqrtm(sigmaT.dot(sigma))
-	# check and correct imaginary numbers from sqrt
-	if np.iscomplexobj(covmeanT):
-		covmeanT = covmeanT.real
-	# calculate score
-	fidT = ssdiffT + np.trace(sigmaT + sigma - 2.0 * covmeanT)
+	for i, fileName in enumerate(fileNames):
 
-	# Repeate for validation FID
-	ssdiffV = np.sum((muV - mu)**2.0)
-	covmeanV = linalg.sqrtm(sigmaV.dot(sigma))
-	if np.iscomplexobj(covmeanV):
-		covmeanV = covmeanV.real
-	fidV = ssdiffV + np.trace(sigmaV + sigma - 2.0 * covmeanV)
+		gen = np.load(FLAGS.inDir+fileName+"_FID.npy") 
+		gen = gen.reshape(gen.shape[0], -1) 
+		
+		# Downsample generated images to larcv comparison size 
+		if larcvV.shape[0] != gen.shape[0]: 
+			idx = np.random.choice(np.arange(gen.shape[0]), size=larcvV.shape[0], replace=False)  
+			gen = gen[idx] 
 
-	print(fileName, fidT, fidV) 
-	FIDs.append(fileName, fidT, fidV) 
+		sigma = np.cov(gen, rowvar=False) 
+		mu = gen.mean(axis=0) 
+		
+		# Training FID 
+		# calculate sum squared difference between means
+		ssdiffT = np.sum((muT - mu)**2.0)
+		# calculate sqrt of product between cov
+		covmeanT = linalg.sqrtm(sigmaT.dot(sigma))
+		# check and correct imaginary numbers from sqrt
+		if np.iscomplexobj(covmeanT):
+			covmeanT = covmeanT.real
+		# calculate score
+		fidT = ssdiffT + np.trace(sigmaT + sigma - 2.0 * covmeanT)
 
-np.save("FID_values.npy", np.array(FIDs))  
+		# Repeat for validation FID
+		ssdiffV = np.sum((muV - mu)**2.0)
+		covmeanV = linalg.sqrtm(sigmaV.dot(sigma))
+		if np.iscomplexobj(covmeanV):
+			covmeanV = covmeanV.real
+		fidV = ssdiffV + np.trace(sigmaV + sigma - 2.0 * covmeanV)
 
+		print(fileName, fidT, fidV) 
+		FIDs.append(fileName, fidT, fidV) 
 
-## GPU Code (WiP) -- CPU is sufficient for now 
+	np.save("FID_values.npy", np.array(FIDs))  
 
-#acts = torch.from_numpy(np.load(fileName+"_FID.npy")) 
-#acts = acts.reshape(acts.size(0), -1) 
-
-#sigma = torch.cov(acts.T) 
-#sigmaNPY = sigma.cpu().detach().numpy()
-
-#print(sigmaNPY.shape) 
-
-#mu = torch.mean(acts, 0) 	
-#muNPY = mu.cpu().detach().numpy() 
-
-#print(muNPY.shape) 
-
-
-
-
+if __name__ == '__main__': 
+	app.run(main) 
 
 
 
